@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #都市名 = WOEID
 World = 1
 Japan = 23424856
