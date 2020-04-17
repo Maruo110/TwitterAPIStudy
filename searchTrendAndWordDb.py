@@ -2,6 +2,8 @@
 
 import json, config, worldid, sqlite3, datetime
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
+from datetime import datetime
+from dao import tweetdbDao
 
 CK = config.CONSUMER_KEY
 CS = config.CONSUMER_SECRET
@@ -23,6 +25,8 @@ db_connection = sqlite3.connect(config.DB_NAME)
 # sqliteを操作するカーソルオブジェクトを作成
 db_cursol = db_connection.cursor()
 
+date_today = datetime.now().strftime("%Y-%m-%d")
+date_time = datetime.now().strftime("%H:%M:%S")
 
 req = twitter.get(url, params = params)
 
@@ -30,8 +34,31 @@ if req.status_code == 200:
     search_trend = json.loads(req.text)
 
     for trendinfo in search_trend[0]['trends']:
+        trend_word = trendinfo['name']
+
+        if len(trend_word) > 0:
+
+            if trend_word[0] == '#':
+                hashtag_flg = 1
+                trend_word_id = tweetdbDao.selectHashtagTbl(db_cursol, trend_word)
+
+                if trend_word_id < 0:
+                    trend_word_id = tweetdbDao.insertHashTagTbl(db_connection, db_cursol, trend_word)
+
+            else:
+                hashtag_flg = 0
+                trend_word_id = -1
+
+        else:
+            hashtag_flg = 0
+            trend_word_id = -1
+
+        trend_volume = trendinfo['tweet_volume']
+
+
         print('▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼')
-        print('＞' + trendinfo['name'] + '  [' + str(trendinfo['tweet_volume']) + ']')
+        print('＞' + trend_word + '  [' + str(trend_volume) + ']')
+
 
         params2 = {
             'q' : trendinfo['name'],
@@ -49,12 +76,15 @@ if req.status_code == 200:
             tweet_volume = str(trendinfo['tweet_volume'])
             #insert_values = "'" + trendinfo['name'] + "'," + str(trendinfo['tweet_volume'])
 
-        insert_values = "'" + trendinfo['name'] + "','" + str(datetime.date.today()) + "'"
+        insert_values = "'" + trendinfo['name'] + "','" + str(date_today) + "','" + str(date_time) + "'"
         insert_values = insert_values + "," + tweet_volume
+        insert_values = insert_values + "," + str(hashtag_flg)
+        insert_values = insert_values + "," + str(trend_word_id)
 
+        print("insert_values＝" + insert_values)
         #db_cursol.execute("INSERT INTO t_trend(s_trendword,s_syutokuymd,s_syutokutime,n_tweetvolume) values()")
         #db_cursol.execute("INSERT INTO t_trend(s_trendword,n_tweetvolume) values(" + insert_values + ")")
-        db_cursol.execute("INSERT INTO t_trend(s_trendword,s_syutokuymd,n_tweetvolume) values(" + insert_values + ")")
+        db_cursol.execute("INSERT INTO t_trend(s_trendword,s_syutokuymd,s_syutokutime,n_tweetvolume,n_hashtagflg,n_hashtagid) values(" + insert_values + ")")
 
         req2 = twitter.get(url2, params = params2)
 
@@ -95,3 +125,7 @@ else:
 # データベースへコミット。これで変更が反映される。
 db_connection.commit()
 db_connection.close()
+
+
+
+
