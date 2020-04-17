@@ -69,22 +69,18 @@ if req.status_code == 200:
 
         if trendinfo['tweet_volume'] is None:
             tweet_volume = "-1"
-            #insert_values = "'" + trendinfo['name'] + "',-1"
-            #insert_values = "'" + trendinfo['name'] + "'," + str(datetime.date.today()) + ",-1"
 
         else:
             tweet_volume = str(trendinfo['tweet_volume'])
-            #insert_values = "'" + trendinfo['name'] + "'," + str(trendinfo['tweet_volume'])
 
         insert_values = "'" + trendinfo['name'] + "','" + str(date_today) + "','" + str(date_time) + "'"
         insert_values = insert_values + "," + tweet_volume
         insert_values = insert_values + "," + str(hashtag_flg)
         insert_values = insert_values + "," + str(trend_word_id)
 
-        print("insert_values＝" + insert_values)
-        #db_cursol.execute("INSERT INTO t_trend(s_trendword,s_syutokuymd,s_syutokutime,n_tweetvolume) values()")
-        #db_cursol.execute("INSERT INTO t_trend(s_trendword,n_tweetvolume) values(" + insert_values + ")")
-        db_cursol.execute("INSERT INTO t_trend(s_trendword,s_syutokuymd,s_syutokutime,n_tweetvolume,n_hashtagflg,n_hashtagid) values(" + insert_values + ")")
+        #print("insert_values＝" + insert_values)
+        trendid = tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
+
 
         req2 = twitter.get(url2, params = params2)
 
@@ -99,6 +95,8 @@ if req.status_code == 200:
                 print('＞' + tweet['full_text'])
 
                 # ツイートURL
+                tweet_url = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str']
+                print ('＞' + tweet_url)
                 print('＞https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str'])
 
                 # ハッシュタグ
@@ -110,6 +108,20 @@ if req.status_code == 200:
                 link_url_list = tweet['entities']['urls']
                 for link_url in link_url_list:
                     print('＞' + link_url['expanded_url'])
+
+
+                tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
+                tweet_insert_value = tweet_insert_value + ", '" + tweet['full_text'] + "'"
+                tweet_insert_value = tweet_insert_value + ", " + str(tweet['retweet_count'])
+                tweet_insert_value = tweet_insert_value + ", " + str(tweet['favorite_count'])
+                tweet_insert_value = tweet_insert_value + ", '" + tweet_url + "'"
+                tweet_insert_value = tweet_insert_value + ", '" + tweet['created_at'] + "'"
+                print ("tweet_insert_value＝" + tweet_insert_value)
+
+                tweet_id = tweetdbDao.insertTweetTbl(db_connection, db_cursol, tweet_insert_value)
+                print ('tweet_id＝' + str(tweet_id))
+
+                tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
 
                 print('-----------------------------------------------------')
 
