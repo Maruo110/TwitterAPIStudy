@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import app_pconfig
+from config import app_config
 from requests_oauthlib import OAuth1Session
 import datetime, time
 
-CK = app_pconfig.CONSUMER_KEY
-CS = app_pconfig.CONSUMER_SECRET
-AT = app_pconfig.ACCESS_TOKEN
-ATS = app_pconfig.ACCESS_TOKEN_SECRET
+CK = app_config.CONSUMER_KEY
+CS = app_config.CONSUMER_SECRET
+AT = app_config.ACCESS_TOKEN
+ATS = app_config.ACCESS_TOKEN_SECRET
 twitter = OAuth1Session(CK, CS, AT, ATS) #認証処理
 
 url = "https://api.twitter.com/1.1/statuses/user_timeline.json" #タイムライン取得エンドポイント

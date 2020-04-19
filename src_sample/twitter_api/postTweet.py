@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # TestGitHub
 import json
-import app_pconfig #標準のjsonモジュールとconfig.pyの読み込み
+from config import app_config #標準のjsonモジュールとconfig.pyの読み込み
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
 
-CK = config.CONSUMER_KEY
-CS app_pconfigig.CONSUMER_SECRET
-app_pconfigonfig.ACCESS_TOKEN
-ATSapp_pconfigfig.ACCESS_TOKEN_SECRapp_pconfigitter = OAuth1Session(CK, CS, AT, ATS) #認証処理
+CK = app_config.CONSUMER_KEY
+CS = app_config.CONSUMER_SECRET
+AT = app_config.ACCESS_TOKEN
+ATS = app_config.ACCESS_TOKEN_SECRET
+twitter = OAuth1Session(CK, CS, AT, ATS) #認証処理
 
 url = "https://api.twitter.com/1.1/statuses/update.json" #ツイートポストエンドポイント
 

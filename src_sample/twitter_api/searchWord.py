@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-import app_pconfig #標準のjsonモジュールとconfig.pyの読み込み
+from config import app_config #標準のjsonモジュールとconfig.pyの読み込み
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
 
 CK = config.CONSUMER_KEY

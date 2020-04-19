@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import json, worldid
-import app_pconfig
+import json
+from config import worldid
+from config import app_config
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
 
 CK = config.CONapp_pconfigKEY
@@ -20,7 +21,7 @@ params = {
     'id' : worldid.Japan
 }
 
-req = twitter.get(url, params = params)
+req = twitter.get(url,worldid = params)
 
 if req.status_code == 200:
     search_trend = json.loads(req.text)
