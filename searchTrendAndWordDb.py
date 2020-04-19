@@ -43,18 +43,23 @@ db_cursol = db_connection.cursor()
 
 req = twitter.get(url, params = params)
 
-if req.status_code == 200:
-    logger.debug('｜◇Twitter OAuth認証通過')
+count_trend     = 0
+count_tweet     = 0
+count_hashtag   = 0
+count_linkedurl = 0
 
-    search_trend = json.loads(req.text)
+try:
+    if req.status_code == 200:
+        logger.debug('｜◇Twitter OAuth認証通過')
 
-    for trendinfo in search_trend[0]['trends']:
-        trend_word = trendinfo['name']
+        search_trend = json.loads(req.text)
 
-        hashtag_flg = 0
-        trend_word_id = -1
+        for trendinfo in search_trend[0]['trends']:
+            count_trend += 1
+            trend_word = trendinfo['name']
 
-        if len(trend_word) > 0:
+            hashtag_flg = 0
+            trend_word_id = -1
 
             if trend_word[0] == '#':
                 hashtag_flg = 1
@@ -66,131 +71,146 @@ if req.status_code == 200:
             else:
                 pass
 
-        else:
-            pass
+            logger.debug('｜▽trend_word: %s', trend_word)
 
-        logger.debug('｜▽trend_word: %s', trend_word)
+            params2 = {
+                'q' : trend_word,
+                'lang' : 'ja',
+                'result_type' : 'popular',
+                'count' : 1
+            }
 
-        params2 = {
-            'q' : trend_word,
-            'lang' : 'ja',
-            'result_type' : 'popular',
-            'count' : 2
-        }
+            trend_volume = trendinfo['tweet_volume']
 
-        trend_volume = trendinfo['tweet_volume']
+            if trend_volume is None:
+                tweet_volume = "-1"
 
-        if trend_volume is None:
-            tweet_volume = "-1"
+            else:
+                tweet_volume = str(trendinfo['tweet_volume'])
 
-        else:
-            tweet_volume = str(trendinfo['tweet_volume'])
+            insert_values = "'" + trend_word + "','" + str(date_today) + "','" + str(date_time) + "'"
+            insert_values = insert_values + "," + tweet_volume
+            insert_values = insert_values + "," + str(hashtag_flg)
+            insert_values = insert_values + "," + str(trend_word_id)
 
-        insert_values = "'" + trend_word + "','" + str(date_today) + "','" + str(date_time) + "'"
-        insert_values = insert_values + "," + tweet_volume
-        insert_values = insert_values + "," + str(hashtag_flg)
-        insert_values = insert_values + "," + str(trend_word_id)
+            #print("insert_values＝" + insert_values)
+            tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
+            trendid = tweetdbDao.getMaxIdTrendTbl(db_cursol)
 
-        #print("insert_values＝" + insert_values)
-        tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
-        trendid = tweetdbDao.getMaxIdTrendTbl(db_cursol)
+            req2 = twitter.get(url2, params = params2)
 
-        req2 = twitter.get(url2, params = params2)
+            if req2.status_code == 200:
+                search_timeline = json.loads(req2.text)
 
-        if req2.status_code == 200:
-            search_timeline = json.loads(req2.text)
-            for tweet in search_timeline['statuses']:
+                for tweet in search_timeline['statuses']:
+                    count_tweet += 1
+                    logger.debug('｜｜▽tweet')
 
-                logger.debug('｜｜▽tweet')
-                tweet_datetime = utils.convert_datetime(tweet['created_at'])
+                    tweet_datetime = utils.convert_datetime(tweet['created_at'])
 
-                print('-----------------------------------------------------')
-                print('@' + tweet['user']['screen_name'])
-                print('＞' + tweet['user']['name'])
-                print('＞' + str(tweet_datetime))
-                print('＞RT=' + str(tweet['retweet_count']) + '　＞FV=' + str(tweet['favorite_count']))
-                print('＞' + tweet['full_text'])
+                    #print('-----------------------------------------------------')
+                    #print('@' + tweet['user']['screen_name'])
+                    #print('＞' + tweet['user']['name'])
+                    #print('＞' + str(tweet_datetime))
+                    #print('＞RT=' + str(tweet['retweet_count']) + '　＞FV=' + str(tweet['favorite_count']))
+                    #print('＞' + tweet['full_text'])
 
-                # ツイートURL
-                tweet_url = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str']
-                print ('＞' + tweet_url)
-                print('＞https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str'])
+                    # ツイートURL
+                    tweet_url = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str']
+                    #print ('＞' + tweet_url)
+                    #print('＞https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str'])
 
-                tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
-                tweet_insert_value = tweet_insert_value + ", '" + tweet['full_text'] + "'"
-                tweet_insert_value = tweet_insert_value + ", " + str(tweet['retweet_count'])
-                tweet_insert_value = tweet_insert_value + ", " + str(tweet['favorite_count'])
-                tweet_insert_value = tweet_insert_value + ", '" + tweet_url + "'"
-                tweet_insert_value = tweet_insert_value + ", '" + str(tweet_datetime) + "'"
-                print ("tweet_insert_value＝" + tweet_insert_value)
+                    tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
+                    #tweet_insert_value = tweet_insert_value + ", '" + tweet['full_text'] + "'"
+                    tweet_insert_value = tweet_insert_value + ", '" + utils.removeSingleCotation(tweet['full_text']) + "'"
+                    tweet_insert_value = tweet_insert_value + ", " + str(tweet['retweet_count'])
+                    tweet_insert_value = tweet_insert_value + ", " + str(tweet['favorite_count'])
+                    tweet_insert_value = tweet_insert_value + ", '" + tweet_url + "'"
+                    tweet_insert_value = tweet_insert_value + ", '" + str(tweet_datetime) + "'"
+                    #print ("tweet_insert_value＝" + tweet_insert_value)
 
-                tweetdbDao.insertTweetTbl(db_connection, db_cursol, tweet_insert_value)
-                tweet_id = tweetdbDao.getMaxIdTweetTbl(db_cursol)
-                print ('tweet_id＝' + str(tweet_id))
+                    tweetdbDao.insertTweetTbl(db_connection, db_cursol, tweet_insert_value)
+                    tweet_id = tweetdbDao.getMaxIdTweetTbl(db_cursol)
+                    #print ('tweet_id＝' + str(tweet_id))
 
-                if tweetdbDao.getExistRecordByTrendTweet(db_cursol, trendid, tweet_id) == False:
-                    tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
-                else:
-                    pass
+                    logger.debug('｜｜｜tweet_id: %s, tweet_url: %s', str(tweet_id), tweet_url)
 
-                # ハッシュタグ
-                hashtaglist = tweet['entities']['hashtags']
-                for hashtag in hashtaglist:
+                    if tweetdbDao.getExistRecordByTrendTweet(db_cursol, trendid, tweet_id) == False:
+                        tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
+                    else:
+                        pass
 
-                    tweet_hashtag = hashtag['text']
-                    print('＞#' + tweet_hashtag)
+                    # ハッシュタグ
+                    hashtaglist = tweet['entities']['hashtags']
 
-                    tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
+                    for hashtag in hashtaglist:
+                        count_hashtag += 1
+                        tweet_hashtag = hashtag['text']
+                        #print('＞#' + tweet_hashtag)
 
-                    if tweet_hashtagid < 0:
-                        tweetdbDao.insertHashTagTbl(db_connection, db_cursol, tweet_hashtag)
                         tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
-                    else:
-                        pass
 
-                    if tweetdbDao.getExistRecordByTweetHashtag(db_cursol, tweet_id, tweet_hashtagid) == False:
-                        tweetdbDao.insertTweetHashtagTbl(db_connection, db_cursol, tweet_id, tweet_hashtagid)
-                    else:
-                        pass
+                        if tweet_hashtagid < 0:
+                            tweetdbDao.insertHashTagTbl(db_connection, db_cursol, tweet_hashtag)
+                            tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
+                        else:
+                            pass
 
-                # リンクURLoo
-                link_url_list = tweet['entities']['urls']
-                for link_url in link_url_list:
-                    url = link_url['expanded_url']
-                    print('＞' + url)
+                        if tweetdbDao.getExistRecordByTweetHashtag(db_cursol, tweet_id, tweet_hashtagid) == False:
+                            tweetdbDao.insertTweetHashtagTbl(db_connection, db_cursol, tweet_id, tweet_hashtagid)
+                        else:
+                            pass
 
-                    url_id = tweetdbDao.getUrlId(db_cursol, url)
+                    # リンクURL
+                    link_url_list = tweet['entities']['urls']
 
-                    if url_id < 0:
-                        tweetdbDao.insertUrlTbl(db_connection, db_cursol, url)
-                        url_id = tweetdbDao.getMaxUrlId(db_cursol)
-                    else:
-                        pass
+                    for link_url in link_url_list:
+                        count_linkedurl += 1
+                        url = link_url['expanded_url']
+                        #print('＞' + url)
 
-                    if tweetdbDao.getExistRecordByTweetUrl(db_cursol, tweet_id, url_id) == False:
-                        tweetdbDao.insertTweetUrl(db_connection, db_cursol, tweet_id, url_id)
-                    else:
-                        pass
+                        url_id = tweetdbDao.getUrlId(db_cursol, url)
 
-                logger.debug('｜｜△')
-            logger.debug('｜△')
+                        if url_id < 0:
+                            tweetdbDao.insertUrlTbl(db_connection, db_cursol, url)
+                            url_id = tweetdbDao.getMaxUrlId(db_cursol)
+                        else:
+                            pass
 
-        else:
-            print("ERROR: %d" % req2.status_code)
+                        if tweetdbDao.getExistRecordByTweetUrl(db_cursol, tweet_id, url_id) == False:
+                            tweetdbDao.insertTweetUrl(db_connection, db_cursol, tweet_id, url_id)
+                        else:
+                            pass
 
-        print('▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲')
+                    logger.debug('｜｜△')
+                logger.debug('｜△')
+
+            else:
+                logger.debug('｜!ERR! StatusCode: %s', req2.status_code)
+                logger.debug('｜△')
+                #print("ERROR: %d" % req2.status_code)
+
+    else:
+        logger.debug('｜◇Twitter OAuth認証≪失敗≫')
+        logger.debug('｜!ERR! StatusCode: %s', req.status_code)
+
+        #print("ERROR: %d" % req.status_code)
+
+
+
+except :
+    logger.error('!ERR!', exc_info=True)
 
 else:
-    logger.log(LOG_LEVEL_DEBUG, '◇Twitter OAuth認証≪失敗≫')
-    logger.log(LOG_LEVEL_DEBUG, '◇エラーコード＝' + req.status_code)
+    logger.info('｜トレンド情報登録[正常終了]')
 
-    print("ERROR: %d" % req.status_code)
+finally:
+    # データベースへコミット。これで変更が反映される。
+    db_connection.commit()
+    db_connection.close()
 
-
-# データベースへコミット。これで変更が反映される。
-db_connection.commit()
-db_connection.close()
-
-
-logger.log(LOG_LEVEL_DEBUG, '▲▲▲▲▲▲END▲▲▲▲▲▲')
-
+    logger.info('｜count_trend    : %d'    , count_trend)
+    logger.info('｜count_tweet    : %d'    , count_tweet)
+    logger.info('｜count_hashtag  : %d'  , count_hashtag)
+    logger.info('｜count_linkedurl: %d', count_linkedurl)
+    logger.info('▲▲▲▲▲▲END▲▲▲▲▲▲')

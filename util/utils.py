@@ -8,3 +8,6 @@ def convert_datetime(datetime_str):
   tweet_datetime = datetime.datetime(*tweet_time[:6])
   return(tweet_datetime)
 
+
+def removeSingleCotation(str):
+    return str.replace("'", " @SingleCotation@")
