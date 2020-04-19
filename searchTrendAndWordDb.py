@@ -1,16 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import json, config, worldid, sqlite3, datetime
+import json, worldid, sqlite3, datetime, logging.config
+import app_pconfig
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
 from datetime import datetime
 from dao import tweetdbDao
 from util import utils
+from logging import getLogger
+
+LOG_LEVEL_DEBUG = 10
+
+# ログ設定ファイルからログ設定を読み込み
+logging.config.fileConfig('logging.conf')
+logger = getLogger()
+logger.info('▼▼▼▼▼▼START▼▼▼▼▼▼')
+date_today = datetime.now().strftime("%Y-%m-%d")
+date_time = datetime.now().strftime("%H:%M:%S")
+
+logger.info('｜処理日: %s', date_today)
+logger.info('｜処理時間: %s', date_time)
 
 
-CK = config.CONSUMER_KEY
-CS = config.CONSUMER_SECRET
-AT = config.ACCESS_TOKEN
-ATS = config.ACCESS_TOKEN_SECRET
+CK = app_pconfig.CONSUMER_KEY
+CS = app_pconfig.CONSUMER_SECRET
+AT = app_pconfig.ACCESS_TOKEN
+ATS = app_pconfig.ACCESS_TOKEN_SECRET
 twitter = OAuth1Session(CK, CS, AT, ATS) #認証処理
 
 # APIエンドポイント（トレンド取得）
@@ -23,16 +37,15 @@ params = {
     'id' : worldid.Japan
 }
 
-db_connection = sqlite3.connect(config.DB_NAME)
+db_connection = sqlite3.connect(app_pconfig.DB_NAME)
 # sqliteを操作するカーソルオブジェクトを作成
 db_cursol = db_connection.cursor()
-
-date_today = datetime.now().strftime("%Y-%m-%d")
-date_time = datetime.now().strftime("%H:%M:%S")
 
 req = twitter.get(url, params = params)
 
 if req.status_code == 200:
+    logger.debug('｜◇Twitter OAuth認証通過')
+
     search_trend = json.loads(req.text)
 
     for trendinfo in search_trend[0]['trends']:
@@ -56,27 +69,24 @@ if req.status_code == 200:
         else:
             pass
 
-        trend_volume = trendinfo['tweet_volume']
-
-
-        print('▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼')
-        print('＞' + trend_word + '  [' + str(trend_volume) + ']')
-
+        logger.debug('｜▽trend_word: %s', trend_word)
 
         params2 = {
-            'q' : trendinfo['name'],
+            'q' : trend_word,
             'lang' : 'ja',
             'result_type' : 'popular',
-            'count' : 3
+            'count' : 2
         }
 
-        if trendinfo['tweet_volume'] is None:
+        trend_volume = trendinfo['tweet_volume']
+
+        if trend_volume is None:
             tweet_volume = "-1"
 
         else:
             tweet_volume = str(trendinfo['tweet_volume'])
 
-        insert_values = "'" + trendinfo['name'] + "','" + str(date_today) + "','" + str(date_time) + "'"
+        insert_values = "'" + trend_word + "','" + str(date_today) + "','" + str(date_time) + "'"
         insert_values = insert_values + "," + tweet_volume
         insert_values = insert_values + "," + str(hashtag_flg)
         insert_values = insert_values + "," + str(trend_word_id)
@@ -91,6 +101,7 @@ if req.status_code == 200:
             search_timeline = json.loads(req2.text)
             for tweet in search_timeline['statuses']:
 
+                logger.debug('｜｜▽tweet')
                 tweet_datetime = utils.convert_datetime(tweet['created_at'])
 
                 print('-----------------------------------------------------')
@@ -117,9 +128,10 @@ if req.status_code == 200:
                 tweet_id = tweetdbDao.getMaxIdTweetTbl(db_cursol)
                 print ('tweet_id＝' + str(tweet_id))
 
-                tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
-
-
+                if tweetdbDao.getExistRecordByTrendTweet(db_cursol, trendid, tweet_id) == False:
+                    tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
+                else:
+                    pass
 
                 # ハッシュタグ
                 hashtaglist = tweet['entities']['hashtags']
@@ -136,8 +148,10 @@ if req.status_code == 200:
                     else:
                         pass
 
-                    tweetdbDao.insertTweetHashtagTbl(db_connection, db_cursol, tweet_id, tweet_hashtagid)
-
+                    if tweetdbDao.getExistRecordByTweetHashtag(db_cursol, tweet_id, tweet_hashtagid) == False:
+                        tweetdbDao.insertTweetHashtagTbl(db_connection, db_cursol, tweet_id, tweet_hashtagid)
+                    else:
+                        pass
 
                 # リンクURLoo
                 link_url_list = tweet['entities']['urls']
@@ -153,10 +167,13 @@ if req.status_code == 200:
                     else:
                         pass
 
-                    tweetdbDao.insertTweetUrl(db_connection, db_cursol, tweet_id, url_id)
+                    if tweetdbDao.getExistRecordByTweetUrl(db_cursol, tweet_id, url_id) == False:
+                        tweetdbDao.insertTweetUrl(db_connection, db_cursol, tweet_id, url_id)
+                    else:
+                        pass
 
-
-                print('-----------------------------------------------------')
+                logger.debug('｜｜△')
+            logger.debug('｜△')
 
         else:
             print("ERROR: %d" % req2.status_code)
@@ -164,6 +181,9 @@ if req.status_code == 200:
         print('▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲')
 
 else:
+    logger.log(LOG_LEVEL_DEBUG, '◇Twitter OAuth認証≪失敗≫')
+    logger.log(LOG_LEVEL_DEBUG, '◇エラーコード＝' + req.status_code)
+
     print("ERROR: %d" % req.status_code)
 
 
@@ -172,5 +192,5 @@ db_connection.commit()
 db_connection.close()
 
 
-
+logger.log(LOG_LEVEL_DEBUG, '▲▲▲▲▲▲END▲▲▲▲▲▲')
 

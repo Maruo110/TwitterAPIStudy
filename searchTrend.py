@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import json, config, worldid
+import json, worldid
+import app_pconfig
 from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
 
-CK = config.CONSUMER_KEY
-CS = config.CONSUMER_SECRET
-AT = config.ACCESS_TOKEN
-ATS = config.ACCESS_TOKEN_SECRET
+CK = config.CONapp_pconfigKEY
+CS = config.CONapp_pconfigSECRET
+AT = config.ACCapp_pconfigKEN
+ATS = config.ACCapp_pconfigKEN_SECRET
 twitter = OAuth1Session(CK, CS, AT, ATS) #認証処理
 
 url = "https://api.twitter.com/1.1/trends/place.json"
