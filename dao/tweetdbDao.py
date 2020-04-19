@@ -40,10 +40,10 @@ def getExistRecordByTrendTweet(cur, trend_id, tweet_id):
 
     result = cur.fetchone()
 
-    if result is None:
-        return False
-    else:
+    if int(result[0]) > 0:
         return True
+    else:
+        return False
 
 def getHashTagId(cur, hashtag_word):
 
@@ -96,10 +96,11 @@ def getExistRecordByTweetUrl(cur, tweet_id, url_id):
 
     result = cur.fetchone()
 
-    if result is None:
-        return False
-    else:
+    if int(result[0]) > 0:
         return True
+    else:
+        return False
+
 
 def insertTweetHashtagTbl(conn, cur, tweet_id, hashtag_id):
 
@@ -113,10 +114,10 @@ def getExistRecordByTweetHashtag(cur, tweet_id, hashtag_id):
 
     result = cur.fetchone()
 
-    if result is None:
-        return False
-    else:
+    if int(result[0]) > 0:
         return True
+    else:
+        return False
 
 
 """
