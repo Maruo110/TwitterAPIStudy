@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import time
+import threading
 
 def run_searchTrendInfo():
 
-    import json, sqlite3, datetime, logging.config
+    import json, sqlite3, datetime, logging.config, requests, re
     from config import worldid
     from config import app_config
     from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
@@ -11,6 +13,7 @@ def run_searchTrendInfo():
     from google_cloud_api import natural_language
     from util import utils
     from logging import getLogger
+    from bs4 import BeautifulSoup
 
     logging.config.fileConfig('logging.conf')
     logger = getLogger()
@@ -119,7 +122,7 @@ def run_searchTrendInfo():
 
                     trend_sentiment_score = trend_sentiment_score + float(tweet_sentiment_score)
 
-                    logger.debug('｜｜｜tweet_text_for_gcp :%s', tweet_text_for_gcp)
+                    #logger.debug('｜｜｜tweet_text_for_gcp :%s', tweet_text_for_gcp)
                     logger.debug('｜｜｜tweet_sentiment_score :%s', tweet_sentiment_score)
 
                     tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
@@ -176,6 +179,23 @@ def run_searchTrendInfo():
                         if url_id < 0:
                             tweetdbDao.insertUrlTbl(db_connection, db_cursol, url)
                             url_id = tweetdbDao.getMaxUrlId(db_cursol)
+
+                            # スクレイピング
+                            web_res = requests.get(url).text
+                            web_soup = BeautifulSoup(web_res, 'html.parser')
+                            ptag = web_soup.find_all("p")
+                            ptag_value = ""
+
+                            for p in ptag:
+                                ptag_value = ptag_value + '\n' + utils.removeSingleCotation(p.text)
+                                #print(p.text)
+
+                            ptag_value = re.sub('[\r\n]+$', '', ptag_value)
+
+
+                            logger.debug('｜｜｜スクレイピング')
+                            logger.debug('｜｜｜ptag_value: %s', ptag_value)
+
                         else:
                             pass
 
@@ -219,3 +239,21 @@ def run_searchTrendInfo():
 if __name__ == '__main__':
     run_searchTrendInfo()
 
+
+"""
+def schedule(interval, f, wait=True):
+    base_time = time.time()
+    next_time = 0
+    while True:
+        t = threading.Thread(target=f)
+        t.start()
+        if wait:
+            t.join()
+        next_time = ((base_time - time.time()) % interval) or interval
+        time.sleep(next_time)
+
+
+if __name__ == '__main__':
+    schedule(300, run_searchTrendInfo)
+    #run_searchTrendInfo()
+"""
