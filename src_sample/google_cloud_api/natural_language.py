@@ -33,7 +33,7 @@ def run_quickstart():
     # [END language_python_migration_client]
 
     # The text to analyze
-    text = u'コロナ1年'
+    text = u'新型コロナウイルスの感染拡大の影響で、アニメ業界が大きな打撃を受けている。アフレコ収録は「3密」の危険性をはらみ、アニメの素材となる作画作業も遅延。余波はタイアップ商品などにも及ぶ。'
     document = types.Document(content=text, type=enums.Document.Type.PLAIN_TEXT)
 
     # Detects the sentiment of the text

@@ -8,12 +8,13 @@ def run_searchTrendInfo():
     from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
     from datetime import datetime
     from dao import tweetdbDao
+    from google_cloud_api import natural_language
     from util import utils
     from logging import getLogger
 
     logging.config.fileConfig('logging.conf')
     logger = getLogger()
-    logger.info('▼▼▼▼▼▼START▼▼▼▼▼▼')
+    logger.info('▼▼▼▼▼▼START▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼')
     date_today = datetime.now().strftime("%Y-%m-%d")
     date_time = datetime.now().strftime("%H:%M:%S")
 
@@ -54,6 +55,8 @@ def run_searchTrendInfo():
 
             hashtag_flg = 0
             trend_word_id = -1
+            trend_sentiment_score = 0.0
+            trend_linked_tweet_cnt = 0
 
             if trend_word[0] == '#':
                 hashtag_flg = 1
@@ -98,17 +101,37 @@ def run_searchTrendInfo():
 
                 for tweet in search_timeline['statuses']:
                     count_tweet += 1
+                    trend_linked_tweet_cnt += 1
+
                     logger.debug('｜｜▽tweet')
 
                     tweet_datetime = utils.convert_datetime(tweet['created_at'])
                     tweet_url = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str']
+                    tweet_text = utils.removeSingleCotation(tweet['full_text'])
+                    tweet_text = utils.removeEmojiStr(tweet_text)
+                    tweet_text_for_gcp = utils.removeUrlLinkStr(tweet_text)
+
+                    # GCP実行
+                    tweet_sentiment = natural_language.getSentiment(tweet_text_for_gcp)
+                    tweet_sentiment_score     = '{:.02f}'.format(tweet_sentiment.score)
+                    tweet_sentiment_magnitude = '{:.05f}'.format(tweet_sentiment.magnitude)
+                    tweet_valid_str_count = len(tweet_text_for_gcp)
+
+                    trend_sentiment_score = trend_sentiment_score + float(tweet_sentiment_score)
+
+                    logger.debug('｜｜｜tweet_text_for_gcp :%s', tweet_text_for_gcp)
+                    logger.debug('｜｜｜tweet_sentiment_score :%s', tweet_sentiment_score)
 
                     tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
-                    tweet_insert_value = tweet_insert_value + ", '" + utils.removeSingleCotation(tweet['full_text']) + "'"
-                    tweet_insert_value = tweet_insert_value + ", " + str(tweet['retweet_count'])
-                    tweet_insert_value = tweet_insert_value + ", " + str(tweet['favorite_count'])
+                    tweet_insert_value = tweet_insert_value + ", '" + tweet_text + "'"
+                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet['retweet_count'])
+                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet['favorite_count'])
                     tweet_insert_value = tweet_insert_value + ", '" + tweet_url + "'"
                     tweet_insert_value = tweet_insert_value + ", '" + str(tweet_datetime) + "'"
+                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_sentiment_score)
+                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_sentiment_magnitude)
+                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_valid_str_count)
+
                     #print ("tweet_insert_value＝" + tweet_insert_value)
 
                     tweetdbDao.insertTweetTbl(db_connection, db_cursol, tweet_insert_value)
@@ -162,6 +185,15 @@ def run_searchTrendInfo():
                             pass
 
                     logger.debug('｜｜△')
+
+                # トレンド情報にGCP結果を更新
+                if trend_linked_tweet_cnt <= 0:
+                    ave_tweet_sentiment_score = 0
+                else:
+                    ave_tweet_sentiment_score = trend_sentiment_score/trend_linked_tweet_cnt
+
+                tweetdbDao.updateTrendTblGcpResult(db_connection, db_cursol, trendid, ave_tweet_sentiment_score)
+
                 logger.debug('｜△')
 
             else:
@@ -181,7 +213,8 @@ def run_searchTrendInfo():
     logger.info('｜count_tweet    : %d'    , count_tweet)
     logger.info('｜count_hashtag  : %d'  , count_hashtag)
     logger.info('｜count_linkedurl: %d', count_linkedurl)
-    logger.info('▲▲▲▲▲▲END▲▲▲▲▲▲')
+    logger.info('▲▲▲▲▲▲END▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲')
+
 
 if __name__ == '__main__':
     run_searchTrendInfo()

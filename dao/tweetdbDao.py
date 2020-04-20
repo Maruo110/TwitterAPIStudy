@@ -13,10 +13,15 @@ def getMaxIdTrendTbl(cur):
     result = cur.fetchone()
     return  int(result[0])
 
+def updateTrendTblGcpResult(conn, cur, trend_id, trend_sentiment_score):
+
+    cur.execute("UPDATE t_trend set r_avetweetsentimentscore = " + str(trend_sentiment_score) + " where n_trendid = " + str(trend_id))
+    conn.commit()
+
 
 def insertTweetTbl(conn, cur, insertValues):
 
-    cur.execute("INSERT INTO t_tweet(s_userid, s_tweettext, n_retweetvolume, n_favoritevolume, s_tweeturl, s_tweettime) values(" + insertValues + ")")
+    cur.execute("INSERT INTO t_tweet(s_userid, s_tweettext, n_retweetvolume, n_favoritevolume, s_tweeturl, s_tweettime, r_tweetsentimentscore, r_tweetsentimentsmagnitude, n_tweetvalidstrcount) values(" + insertValues + ")")
     conn.commit()
 
 
