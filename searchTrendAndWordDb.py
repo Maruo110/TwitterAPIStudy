@@ -77,7 +77,7 @@ if req.status_code == 200:
             'q' : trend_word,
             'lang' : 'ja',
             'result_type' : 'popular',
-            'count' : 1
+            'count' : 5
         }
 
         trend_volume = trendinfo['tweet_volume']
@@ -93,7 +93,7 @@ if req.status_code == 200:
         insert_values = insert_values + "," + str(hashtag_flg)
         insert_values = insert_values + "," + str(trend_word_id)
 
-        print("insert_values＝" + insert_values)
+        #print("insert_values＝" + insert_values)
         tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
         trendid = tweetdbDao.getMaxIdTrendTbl(db_cursol)
 
