@@ -28,7 +28,14 @@ def removeUrlLinkStr(str):
     import re
     return re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-…]+', "", str)
 
+def removeKaigyou(str):
+    #import re
+    #return re.sub('[\r\n]+$', '', str)
+    #return  str.strip()
+    return ' '.join(str.splitlines())
+
 
 if __name__ == '__main__':
-    emojis = '(｀ヘ´) 🤗✨⭕🤓🤔🤘🦁⭐🆗🆖🈲🤐🤗🤖🤑🆙⏩'
-    print(removeEmojiStr(emojis))
+    str = '今日の天気は\r\n\n晴れです。'
+    print(str)
+    print(removeKaigyou(str))

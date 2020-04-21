@@ -4,7 +4,7 @@ import threading
 
 def run_searchTrendInfo():
 
-    import json, sqlite3, datetime, logging.config, requests, re
+    import json, sqlite3, datetime, logging.config, requests
     from config import worldid
     from config import app_config
     from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
@@ -190,8 +190,8 @@ def run_searchTrendInfo():
                                 ptag_value = ptag_value + '\n' + utils.removeSingleCotation(p.text)
                                 #print(p.text)
 
-                            ptag_value = re.sub('[\r\n]+$', '', ptag_value)
-
+                            #ptag_value = re.sub('[\r\n]+$', '', ptag_value)
+                            ptag_value = utils.removeKaigyou(ptag_value)
 
                             logger.debug('｜｜｜スクレイピング')
                             logger.debug('｜｜｜ptag_value: %s', ptag_value)
