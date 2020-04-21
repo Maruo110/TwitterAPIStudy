@@ -35,7 +35,7 @@ def run_searchTrendInfo():
     # APIエンドポイント（ツイート取得＜拡張版＞）
     url2 = "https://api.twitter.com/1.1/search/tweets.json?tweet_mode=extended"
 
-    params = {'id' : worldid.Japan}
+    params = {'id' : worldid.Japan, 'exclude': 'hashtags'}
 
     req = twitter.get(url, params = params)
 
@@ -77,7 +77,6 @@ def run_searchTrendInfo():
 
             if trend_volume is None:
                 tweet_volume = "-1"
-
             else:
                 tweet_volume = str(trend_volume)
 
