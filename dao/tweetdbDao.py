@@ -67,8 +67,8 @@ def insertHashTagTbl(conn, cur, hashtag_word):
     conn.commit()
 
 
-def insertUrlTbl(conn, cur, url):
-    cur.execute("INSERT INTO t_url(s_linkedurl) values('" + url + "')")
+def insertUrlTbl(conn, cur, insertValues):
+    cur.execute("INSERT INTO t_url(s_linkedurl, r_sentimentscore, r_sentimentsmagnitude, n_validstrcount, s_title) values(" + insertValues + ")")
     conn.commit()
 
 

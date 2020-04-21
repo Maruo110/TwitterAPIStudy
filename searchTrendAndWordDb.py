@@ -177,13 +177,11 @@ def run_searchTrendInfo():
                         url_id = tweetdbDao.getUrlId(db_cursol, url)
 
                         if url_id < 0:
-                            tweetdbDao.insertUrlTbl(db_connection, db_cursol, url)
-                            url_id = tweetdbDao.getMaxUrlId(db_cursol)
-
                             # スクレイピング
                             web_res = requests.get(url).text
                             web_soup = BeautifulSoup(web_res, 'html.parser')
                             ptag = web_soup.find_all("p")
+                            url_title = web_soup.find_all("title")
                             ptag_value = ""
 
                             for p in ptag:
@@ -195,6 +193,22 @@ def run_searchTrendInfo():
 
                             logger.debug('｜｜｜スクレイピング')
                             logger.debug('｜｜｜ptag_value: %s', ptag_value)
+
+                            # GCP実行
+                            ulr_sentiment = natural_language.getSentiment(ptag_value)
+                            ulr_sentiment_score     = '{:.02f}'.format(ulr_sentiment.score)
+                            ulr_sentiment_magnitude = '{:.05f}'.format(ulr_sentiment.magnitude)
+                            ulr_valid_str_count = len(ptag_value)
+
+                            url_insert_value = "'" + url + "'"
+                            url_insert_value = url_insert_value + ", " + str(ulr_sentiment_score)
+                            url_insert_value = url_insert_value + ", " + str(ulr_sentiment_magnitude)
+                            url_insert_value = url_insert_value + ", " + str(ulr_valid_str_count)
+                            url_insert_value = url_insert_value + ", '" + url_title[0].text + "'"
+
+                            tweetdbDao.insertUrlTbl(db_connection, db_cursol, url_insert_value)
+                            url_id = tweetdbDao.getMaxUrlId(db_cursol)
+
 
                         else:
                             pass

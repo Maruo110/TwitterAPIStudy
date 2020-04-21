@@ -17,5 +17,5 @@ ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
 DB_NAME = "TWEET_DATA.sqlite"
 
 # トレンド単位ツイート取得数
-GET_TWEET_CNT = 1
+GET_TWEET_CNT = 3
 
