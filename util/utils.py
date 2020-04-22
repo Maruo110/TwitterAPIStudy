@@ -36,8 +36,7 @@ def removeKaigyou(str):
     #import re
     #return re.sub('[\r\n]+$', '', str)
     #return  str.strip()
-    return ' '.join(str.splitlines())
-
+    return '　'.join(str.splitlines())
 
 if __name__ == '__main__':
     str = 'よい夫婦の日だそうで。#吉田鋼太郎 #瀬奈じゅん #今日俺劇場版 #今日から俺は︎  '
