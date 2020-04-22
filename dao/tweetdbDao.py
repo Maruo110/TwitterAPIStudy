@@ -68,7 +68,7 @@ def insertHashTagTbl(conn, cur, hashtag_word):
 
 
 def insertUrlTbl(conn, cur, insertValues):
-    cur.execute("INSERT INTO t_url(s_linkedurl, r_sentimentscore, r_sentimentsmagnitude, n_validstrcount, s_title) values(" + insertValues + ")")
+    cur.execute("INSERT INTO t_url(s_linkedurl, r_sentimentscore, r_sentimentsmagnitude, n_validstrcount, s_title, s_contents) values(" + insertValues + ")")
     conn.commit()
 
 
@@ -197,6 +197,47 @@ def updateTweetWordNameTbl(conn, cur, tweet_id, wordname_id):
 
     cur.execute("UPDATE t_tweetwordname set n_count = " + str(int(result[0]) + 1) + " where " + where_statement)
     conn.commit()
+
+def getExistRecordByUrlWordName(cur, url_id, wordname_id):
+
+    from_statement = "t_urlwordname"
+    select_statement = "count(n_wordnameid)"
+
+    where_statement = "n_wordnameid = " + str(wordname_id)
+    where_statement = where_statement + " and n_linkedurlid = " + str(url_id)
+
+    cur.execute("SELECT " + select_statement + " FROM " + from_statement + " where "+ where_statement)
+
+    result = cur.fetchone()
+
+    if int(result[0]) > 0:
+        return True
+    else:
+        return False
+
+def insertUrlWordNameTbl(conn, cur, url_id, wordname_id):
+
+    table_name = "t_urlwordname"
+
+    insert_value = str(wordname_id)
+    insert_value = insert_value + ", " + str(url_id)
+    insert_value = insert_value + ", 1"
+
+    cur.execute("INSERT INTO " + table_name + " (n_wordnameid, n_linkedurlid, n_count) values(" + insert_value + ")")
+    conn.commit()
+
+def updateUrlWordNameTbl(conn, cur, url_id, wordname_id):
+
+    where_statement = "n_wordnameid = " + str(wordname_id)
+    where_statement = where_statement + " and n_linkedurlid = " + str(url_id)
+
+    cur.execute("SELECT n_count FROM t_urlwordname WHERE " + where_statement)
+
+    result = cur.fetchone()
+
+    cur.execute("UPDATE t_urlwordname set n_count = " + str(int(result[0]) + 1) + " where " + where_statement)
+    conn.commit()
+
 
 """
 def getHashTagId(cur, hashtag_word):

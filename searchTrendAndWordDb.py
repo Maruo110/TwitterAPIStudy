@@ -55,7 +55,6 @@ def run_searchTrendInfo():
         search_trend = json.loads(req.text)
 
         for trendinfo in search_trend[0]['trends']:
-            count_trend += 1
             trend_word = trendinfo['name']
 
             hashtag_flg = 0
@@ -90,6 +89,7 @@ def run_searchTrendInfo():
             #print("insert_values＝" + insert_values)
             tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
             trendid = tweetdbDao.getMaxIdTrendTbl(db_cursol)
+            count_trend += 1
 
             params2 = {
                 'q' : trend_word,
@@ -178,7 +178,6 @@ def run_searchTrendInfo():
                     hashtaglist = tweet['entities']['hashtags']
 
                     for hashtag in hashtaglist:
-                        count_hashtag += 1
                         tweet_hashtag = hashtag['text']
 
                         tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
@@ -186,6 +185,7 @@ def run_searchTrendInfo():
                         if tweet_hashtagid < 0:
                             tweetdbDao.insertHashTagTbl(db_connection, db_cursol, tweet_hashtag)
                             tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
+                            count_hashtag += 1
                         else:
                             pass
 
@@ -198,7 +198,6 @@ def run_searchTrendInfo():
                     link_url_list = tweet['entities']['urls']
 
                     for link_url in link_url_list:
-                        count_linkedurl += 1
                         url = link_url['expanded_url']
 
                         url_id = tweetdbDao.getUrlId(db_cursol, url)
@@ -227,9 +226,39 @@ def run_searchTrendInfo():
                             url_insert_value = url_insert_value + ", " + str(ulr_sentiment_magnitude)
                             url_insert_value = url_insert_value + ", " + str(ulr_valid_str_count)
                             url_insert_value = url_insert_value + ", '" + url_title[0].text + "'"
+                            url_insert_value = url_insert_value + ", '" + ptag_value + "'"
 
                             tweetdbDao.insertUrlTbl(db_connection, db_cursol, url_insert_value)
                             url_id = tweetdbDao.getMaxUrlId(db_cursol)
+                            count_linkedurl += 1
+
+                            # ------------------------------------------------------------------------
+                            # GCP Entity解析処理
+                            # ------------------------------------------------------------------------
+                            web_entities = analyze_entities.getAnalizeEntityResult(ptag_value)
+                            for entity in web_entities.entities:
+                                entity_name = entity.name
+                                entity_type = format(enums.Entity.Type(entity.type).name)
+                                entity_salience = float(entity.salience)
+                                entity_url = ""
+
+                                # 「NUMBER」タイプは登録処理をスキップする
+                                if entity_type ==  "NUMBER":
+                                    pass
+                                else:
+                                    # ■固有名詞テーブル登録処理
+                                    if tweetdbDao.getExistRecordByWordName(db_cursol, entity_name) == False:
+                                        tweetdbDao.insertWordNameTbl(db_connection, db_cursol, entity_name, entity_type, entity_url, entity_salience)
+                                    else:
+                                        pass
+
+                                    entity_wordnameid = tweetdbDao.getWordNameId(db_cursol, entity_name)
+
+                                    # ■Web関連固有名詞テーブル登録処理
+                                    if tweetdbDao.getExistRecordByUrlWordName(db_cursol, url_id, entity_wordnameid) == False:
+                                        tweetdbDao.insertUrlWordNameTbl(db_connection, db_cursol, url_id, entity_wordnameid)
+                                    else:
+                                        tweetdbDao.updateUrlWordNameTbl(db_connection, db_cursol, url_id, entity_wordnameid)
 
                         else:
                             pass
