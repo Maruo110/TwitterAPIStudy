@@ -32,11 +32,25 @@ def removeHashTagStr(str):
     import re
     return re.sub(r"#(\w+)", "", str)
 
+def removeHashTag2Str(str):
+    import re
+    return re.sub(r"＃(\w+)", "", str)
+
+def removeMensyonStr(str):
+    import re
+    return re.sub(r"@(\w+)", "", str)
+
 def removeKaigyou(str):
-    #import re
-    #return re.sub('[\r\n]+$', '', str)
-    #return  str.strip()
-    return '　'.join(str.splitlines())
+    return '◆'.join(str.splitlines())
+
+def removeTabStr(str):
+    import re
+    return re.sub(r"\t+", " ", str)
+
+def removeSpacesStr(str):
+    import re
+    return re.sub(r"\s+", " ", str)
+
 
 if __name__ == '__main__':
     str = 'よい夫婦の日だそうで。#吉田鋼太郎 #瀬奈じゅん #今日俺劇場版 #今日から俺は︎  '

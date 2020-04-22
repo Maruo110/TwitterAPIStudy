@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from google.cloud.language_v1.proto.language_service_pb2 import Sentence
 
 def insertTrendTbl(conn, cur, insertValues):
 
@@ -12,6 +13,7 @@ def getMaxIdTrendTbl(cur):
 
     result = cur.fetchone()
     return  int(result[0])
+
 
 def updateTrendTblGcpResult(conn, cur, trend_id, trend_sentiment_score):
 
@@ -49,6 +51,7 @@ def getExistRecordByTrendTweet(cur, trend_id, tweet_id):
         return True
     else:
         return False
+
 
 def getHashTagId(cur, hashtag_word):
 
@@ -90,10 +93,12 @@ def getMaxUrlId(cur):
     result = cur.fetchone()
     return  int(result[0])
 
+
 def insertTweetUrl(conn, cur, tweet_id, url_id):
 
     cur.execute("INSERT INTO t_tweeturl(n_tweetid, n_linkedurlid) values(" + str(tweet_id) + ", " + str(url_id) + ")")
     conn.commit()
+
 
 def getExistRecordByTweetUrl(cur, tweet_id, url_id):
 
@@ -123,6 +128,7 @@ def getExistRecordByTweetHashtag(cur, tweet_id, hashtag_id):
         return True
     else:
         return False
+
 
 def getExistRecordByWordName(cur, word_name):
 
@@ -164,6 +170,7 @@ def getExistRecordByTweetWordName(cur, tweet_id, wordname_id):
     else:
         return False
 
+
 def getWordNameId(cur, word_name):
 
     where_statement = "s_wordname = '" + word_name + "'"
@@ -198,6 +205,7 @@ def updateTweetWordNameTbl(conn, cur, tweet_id, wordname_id):
     cur.execute("UPDATE t_tweetwordname set n_count = " + str(int(result[0]) + 1) + " where " + where_statement)
     conn.commit()
 
+
 def getExistRecordByUrlWordName(cur, url_id, wordname_id):
 
     from_statement = "t_urlwordname"
@@ -215,6 +223,7 @@ def getExistRecordByUrlWordName(cur, url_id, wordname_id):
     else:
         return False
 
+
 def insertUrlWordNameTbl(conn, cur, url_id, wordname_id):
 
     table_name = "t_urlwordname"
@@ -226,6 +235,7 @@ def insertUrlWordNameTbl(conn, cur, url_id, wordname_id):
     cur.execute("INSERT INTO " + table_name + " (n_wordnameid, n_linkedurlid, n_count) values(" + insert_value + ")")
     conn.commit()
 
+
 def updateUrlWordNameTbl(conn, cur, url_id, wordname_id):
 
     where_statement = "n_wordnameid = " + str(wordname_id)
@@ -236,6 +246,95 @@ def updateUrlWordNameTbl(conn, cur, url_id, wordname_id):
     result = cur.fetchone()
 
     cur.execute("UPDATE t_urlwordname set n_count = " + str(int(result[0]) + 1) + " where " + where_statement)
+    conn.commit()
+
+
+def getExistRecordBySentence(cur, sentence):
+
+    from_statement = "t_sentence"
+    select_statement = "count(n_sentenceid)"
+
+    where_statement = "s_sentence = '" + sentence + "'"
+
+    cur.execute("SELECT " + select_statement + " FROM " + from_statement + " where "+ where_statement)
+
+    result = cur.fetchone()
+
+    if int(result[0]) > 0:
+        return True
+    else:
+        return False
+
+
+def insertSentenceTbl(conn, cur, sentence):
+
+    table_name = "t_sentence"
+
+    insert_value = "'" + sentence + "'"
+    insert_value = insert_value + ", 1"
+    insert_value = insert_value + ", 0"
+
+    cur.execute("INSERT INTO " + table_name + " (s_sentence, n_count, n_ignoreflg) values(" + insert_value + ")")
+    conn.commit()
+
+
+def updateSentence(conn, cur, sentence_id):
+
+    where_statement = "n_sentenceid = " + str(sentence_id)
+
+    cur.execute("SELECT n_count FROM t_sentence WHERE " + where_statement)
+
+    result = cur.fetchone()
+
+    set_statement = ""
+    if int(result[0]) > 50:
+        set_statement = "n_count = " + str(int(result[0]) + 1)
+    else:
+        set_statement = "n_count = " + str(int(result[0]) + 1) + ", n_ignoreflg = 1"
+
+    cur.execute("UPDATE t_sentence set " + set_statement + " where " + where_statement)
+    conn.commit()
+
+
+def getSentenceId(cur, sentence):
+
+    from_statement = "t_sentence"
+    select_statement = "n_sentenceid"
+
+    where_statement = "s_sentence = '" + sentence + "'"
+
+    cur.execute("SELECT " + select_statement + " FROM " + from_statement + " where "+ where_statement)
+
+    result = cur.fetchone()
+    return  int(result[0])
+
+
+def getExistRecordBySentenceUrl(cur, sentence_id, url_id):
+
+    from_statement = "t_sentenceurl"
+    select_statement = "count(n_sentenceid)"
+
+    where_statement = "n_sentenceid = " + str(sentence_id)
+    where_statement = where_statement + " and n_urlid = " + str(url_id)
+
+    cur.execute("SELECT " + select_statement + " FROM " + from_statement + " where "+ where_statement)
+
+    result = cur.fetchone()
+
+    if int(result[0]) > 0:
+        return True
+    else:
+        return False
+
+
+def insertSentenceUrlTbl(conn, cur, sentence_id, url_id):
+
+    table_name = "t_sentenceurl"
+
+    insert_value = "'" + str(sentence_id) + "'"
+    insert_value = insert_value + ", '" + str(url_id) + "'"
+
+    cur.execute("INSERT INTO " + table_name + " (n_sentenceid, n_urlid) values(" + insert_value + ")")
     conn.commit()
 
 

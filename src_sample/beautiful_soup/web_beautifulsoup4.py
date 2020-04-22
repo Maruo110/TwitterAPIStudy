@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 
 
@@ -7,14 +8,14 @@ def getWebInfoBeautifulSoup4():
     from bs4 import BeautifulSoup
     from util import utils
 
-    url = "https://news.line.me/articles/oa-rp73073/9ea6e70c0e15"
+    url = "https://www.tokyo-np.co.jp/article/national/list/202004/CK2020041602000127.html"
     res = requests.get(url).text
 
     soup = BeautifulSoup(res, 'html.parser') #2
-    ptag = soup.find_all("title")
+    ptag = soup.find_all("p")
     ptag_value = ""
 
-    print ("@" + ptag[0].text)
+    #print ("@" + ptag[0].text)
 
     for p in ptag:
         ptag_value = ptag_value + p.text

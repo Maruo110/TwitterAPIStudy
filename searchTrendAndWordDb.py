@@ -26,6 +26,7 @@ def run_searchTrendInfo():
     logger.info('｜処理日: %s', date_today)
     logger.info('｜処理時間: %s', date_time)
 
+
     CK = app_config.CONSUMER_KEY
     CS = app_config.CONSUMER_SECRET
     AT = app_config.ACCESS_TOKEN
@@ -209,11 +210,16 @@ def run_searchTrendInfo():
                             ptag = web_soup.find_all("p")
                             url_title = web_soup.find_all("title")
                             ptag_value = ""
+                            url_title_value = ""
 
                             for p in ptag:
                                 ptag_value = ptag_value + '　' + p.text
 
+                            for ptitle in url_title:
+                                url_title_value = url_title_value + '　' + ptitle.text
+
                             ptag_value = removeNoise(ptag_value)
+                            url_title_value = removeNoise(url_title_value)
 
                             # GCP実行
                             ulr_sentiment = natural_language.getSentiment(ptag_value)
@@ -225,7 +231,7 @@ def run_searchTrendInfo():
                             url_insert_value = url_insert_value + ", " + str(ulr_sentiment_score)
                             url_insert_value = url_insert_value + ", " + str(ulr_sentiment_magnitude)
                             url_insert_value = url_insert_value + ", " + str(ulr_valid_str_count)
-                            url_insert_value = url_insert_value + ", '" + url_title[0].text + "'"
+                            url_insert_value = url_insert_value + ", '" + url_title_value + "'"
                             url_insert_value = url_insert_value + ", '" + ptag_value + "'"
 
                             tweetdbDao.insertUrlTbl(db_connection, db_cursol, url_insert_value)
@@ -233,11 +239,37 @@ def run_searchTrendInfo():
                             count_linkedurl += 1
 
                             # ------------------------------------------------------------------------
+                            # 文章テーブル登録処理
+                            # ------------------------------------------------------------------------
+                            url_sentences = removeNoise(ptag_value)
+                            url_sentences = url_sentences.split("◆")
+
+                            for sentence in url_sentences:
+                                sentence = sentence.strip()
+
+
+                                if len(sentence) > 1:
+                                    if tweetdbDao.getExistRecordBySentence(db_cursol, sentence) == False:
+                                        tweetdbDao.insertSentenceTbl(db_connection, db_cursol, sentence)
+                                        sentence_id = tweetdbDao.getSentenceId(db_cursol, sentence)
+
+                                    else:
+                                        sentence_id = tweetdbDao.getSentenceId(db_cursol, sentence)
+                                        tweetdbDao.updateSentence(db_connection, db_cursol, sentence_id)
+
+                                    if tweetdbDao.getExistRecordBySentenceUrl(db_cursol, url_id, sentence_id) ==  False:
+                                        tweetdbDao.insertSentenceUrlTbl(db_connection, db_cursol, url_id, sentence_id)
+                                    else:
+                                        pass
+
+                                else:
+                                    pass
+                            # ------------------------------------------------------------------------
                             # GCP Entity解析処理
                             # ------------------------------------------------------------------------
                             web_entities = analyze_entities.getAnalizeEntityResult(ptag_value)
                             for entity in web_entities.entities:
-                                entity_name = entity.name
+                                entity_name = removeNoise(entity_name)
                                 entity_type = format(enums.Entity.Type(entity.type).name)
                                 entity_salience = float(entity.salience)
                                 entity_url = ""
@@ -248,6 +280,7 @@ def run_searchTrendInfo():
                                 else:
                                     # ■固有名詞テーブル登録処理
                                     if tweetdbDao.getExistRecordByWordName(db_cursol, entity_name) == False:
+                                        logger.debug('｜｜｜getExistRecordByWordName(entity_name): %s', entity_name)
                                         tweetdbDao.insertWordNameTbl(db_connection, db_cursol, entity_name, entity_type, entity_url, entity_salience)
                                     else:
                                         pass
@@ -308,7 +341,12 @@ def removeNoise(str):
     result_str = utils.removeEmojiStr(result_str)
     result_str = utils.removeUrlLinkStr(result_str)
     result_str = utils.removeHashTagStr(result_str)
+    result_str = utils.removeHashTag2Str(result_str)
+    result_str = utils.removeMensyonStr(result_str)
     result_str = utils.removeKaigyou(result_str)
+    result_str = utils.removeTabStr(result_str)
+    result_str = utils.removeSpacesStr(result_str)
+
     return result_str
 
 
