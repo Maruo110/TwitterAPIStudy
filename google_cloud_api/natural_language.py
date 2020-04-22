@@ -13,7 +13,7 @@ def getSentiment(analyze_text):
     sentiment = client.analyze_sentiment(document=document).document_sentiment
 
     #print('Text: {}'.format(text))
-    print('Sentiment: {}, {}'.format(sentiment.score, sentiment.magnitude))
+    #print('Sentiment: {}, {}'.format(sentiment.score, sentiment.magnitude))
 
     return sentiment
 
