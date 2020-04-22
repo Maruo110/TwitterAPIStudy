@@ -28,6 +28,10 @@ def removeUrlLinkStr(str):
     import re
     return re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-…]+', "", str)
 
+def removeHashTagStr(str):
+    import re
+    return re.sub(r"#(\w+)", "", str)
+
 def removeKaigyou(str):
     #import re
     #return re.sub('[\r\n]+$', '', str)
@@ -36,6 +40,6 @@ def removeKaigyou(str):
 
 
 if __name__ == '__main__':
-    str = '今日の天気は\r\n\n晴れです。'
+    str = 'よい夫婦の日だそうで。#吉田鋼太郎 #瀬奈じゅん #今日俺劇場版 #今日から俺は︎  '
     print(str)
-    print(removeKaigyou(str))
+    print(removeHashTagStr(str))
