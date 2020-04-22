@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import threading
+from google_cloud_api.analyze_entities import getAnalizeEntityResult
 
 def run_searchTrendInfo():
 
@@ -10,7 +11,8 @@ def run_searchTrendInfo():
     from requests_oauthlib import OAuth1Session #OAuthのライブラリの読み込み
     from datetime import datetime
     from dao import tweetdbDao
-    from google_cloud_api import natural_language
+    from google_cloud_api import natural_language, analyze_entities
+    from google.cloud.language_v1 import enums
     from util import utils
     from logging import getLogger
     from bs4 import BeautifulSoup
@@ -109,20 +111,18 @@ def run_searchTrendInfo():
 
                     tweet_datetime = utils.convert_datetime(tweet['created_at'])
                     tweet_url = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + tweet['id_str']
-                    tweet_text = utils.removeSingleCotation(tweet['full_text'])
-                    tweet_text = utils.removeEmojiStr(tweet_text)
-                    tweet_text_for_gcp = utils.removeUrlLinkStr(tweet_text)
+                    tweet_text = removeNoise(tweet['full_text'])
 
                     # GCP実行
-                    tweet_sentiment = natural_language.getSentiment(tweet_text_for_gcp)
+                    tweet_sentiment = natural_language.getSentiment(tweet_text)
                     tweet_sentiment_score     = '{:.02f}'.format(tweet_sentiment.score)
                     tweet_sentiment_magnitude = '{:.05f}'.format(tweet_sentiment.magnitude)
-                    tweet_valid_str_count = len(tweet_text_for_gcp)
+                    tweet_valid_str_count = len(tweet_text)
 
                     trend_sentiment_score = trend_sentiment_score + float(tweet_sentiment_score)
 
-                    #logger.debug('｜｜｜tweet_text_for_gcp :%s', tweet_text_for_gcp)
                     logger.debug('｜｜｜tweet_sentiment_score :%s', tweet_sentiment_score)
+
 
                     tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
                     tweet_insert_value = tweet_insert_value + ", '" + tweet_text + "'"
@@ -145,6 +145,34 @@ def run_searchTrendInfo():
                         tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
                     else:
                         pass
+
+                    # ------------------------------------------------------------------------
+                    # GCP Entity解析処理
+                    # ------------------------------------------------------------------------
+                    tweet_entities = analyze_entities.getAnalizeEntityResult(tweet_text)
+                    for entity in tweet_entities.entities:
+                        entity_name = entity.name
+                        entity_type = format(enums.Entity.Type(entity.type).name)
+                        entity_salience = float(entity.salience)
+                        entity_url = ""
+
+                        # 「NUMBER」タイプは登録処理をスキップする
+                        if entity_type ==  "NUMBER":
+                            pass
+                        else:
+                            # ■固有名詞テーブル登録処理
+                            if tweetdbDao.getExistRecordByWordName(db_cursol, entity_name) == False:
+                                tweetdbDao.insertWordNameTbl(db_connection, db_cursol, entity_name, entity_type, entity_url, entity_salience)
+                            else:
+                                pass
+
+                            entity_wordnameid = tweetdbDao.getWordNameId(db_cursol, entity_name)
+
+                            # ■ツイート関連固有名詞テーブル登録処理
+                            if tweetdbDao.getExistRecordByTweetWordName(db_cursol, tweet_id, entity_wordnameid) == False:
+                                tweetdbDao.insertTweetWordNameTbl(db_connection, db_cursol, tweet_id, entity_wordnameid)
+                            else:
+                                tweetdbDao.updateTweetWordNameTbl(db_connection, db_cursol, tweet_id, entity_wordnameid)
 
                     # ハッシュタグ
                     hashtaglist = tweet['entities']['hashtags']
@@ -184,14 +212,9 @@ def run_searchTrendInfo():
                             ptag_value = ""
 
                             for p in ptag:
-                                ptag_value = ptag_value + '\n' + utils.removeSingleCotation(p.text)
-                                #print(p.text)
+                                ptag_value = ptag_value + '　' + p.text
 
-                            #ptag_value = re.sub('[\r\n]+$', '', ptag_value)
-                            ptag_value = utils.removeKaigyou(ptag_value)
-
-                            logger.debug('｜｜｜スクレイピング')
-                            logger.debug('｜｜｜ptag_value: %s', ptag_value)
+                            ptag_value = removeNoise(ptag_value)
 
                             # GCP実行
                             ulr_sentiment = natural_language.getSentiment(ptag_value)
@@ -207,7 +230,6 @@ def run_searchTrendInfo():
 
                             tweetdbDao.insertUrlTbl(db_connection, db_cursol, url_insert_value)
                             url_id = tweetdbDao.getMaxUrlId(db_cursol)
-
 
                         else:
                             pass
@@ -247,6 +269,18 @@ def run_searchTrendInfo():
     logger.info('｜count_hashtag  : %d'  , count_hashtag)
     logger.info('｜count_linkedurl: %d', count_linkedurl)
     logger.info('▲▲▲▲▲▲END▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲')
+
+
+def removeNoise(str):
+    from util import utils
+
+    result_str = str
+    result_str = utils.removeSingleCotation(result_str)
+    result_str = utils.removeEmojiStr(result_str)
+    result_str = utils.removeUrlLinkStr(result_str)
+    result_str = utils.removeHashTagStr(result_str)
+    result_str = utils.removeKaigyou(result_str)
+    return result_str
 
 
 if __name__ == '__main__':

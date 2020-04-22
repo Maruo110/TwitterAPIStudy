@@ -124,6 +124,79 @@ def getExistRecordByTweetHashtag(cur, tweet_id, hashtag_id):
     else:
         return False
 
+def getExistRecordByWordName(cur, word_name):
+
+    cur.execute("SELECT count(n_wordnameid) FROM t_wordname where s_wordname = '" + word_name + "'")
+
+    result = cur.fetchone()
+
+    if int(result[0]) > 0:
+        return True
+    else:
+        return False
+
+
+def insertWordNameTbl(conn, cur, word_name, word_type, wikipedia_url, saliences_score):
+
+    insert_value = "'" + word_name + "'"
+    insert_value = insert_value + ", '" + word_type + "'"
+    insert_value = insert_value + ", '" + wikipedia_url + "'"
+    insert_value = insert_value + ", " + str(saliences_score)
+
+    cur.execute("INSERT INTO t_wordname(s_wordname, s_wordtype, s_wikipediaurl, r_saliencescore) values(" + insert_value + ")")
+    conn.commit()
+
+
+def getExistRecordByTweetWordName(cur, tweet_id, wordname_id):
+
+    from_statement = "t_tweetwordname"
+    select_statement = "count(n_tweetid)"
+
+    where_statement = "n_tweetid = " + str(tweet_id)
+    where_statement = where_statement + " and n_wordnameid = " + str(wordname_id)
+
+    cur.execute("SELECT " + select_statement + " FROM " + from_statement + " where "+ where_statement)
+
+    result = cur.fetchone()
+
+    if int(result[0]) > 0:
+        return True
+    else:
+        return False
+
+def getWordNameId(cur, word_name):
+
+    where_statement = "s_wordname = '" + word_name + "'"
+
+    cur.execute("SELECT max(n_wordnameid) FROM t_wordname WHERE " + where_statement)
+
+    result = cur.fetchone()
+    return  int(result[0])
+
+
+def insertTweetWordNameTbl(conn, cur, tweet_id, wordname_id):
+
+    table_name = "t_tweetwordname"
+
+    insert_value = str(tweet_id)
+    insert_value = insert_value + ", " + str(wordname_id)
+    insert_value = insert_value + ", 1"
+
+    cur.execute("INSERT INTO " + table_name + " (n_tweetid, n_wordnameid, n_count) values(" + insert_value + ")")
+    conn.commit()
+
+
+def updateTweetWordNameTbl(conn, cur, tweet_id, wordname_id):
+
+    where_statement = "n_tweetid = " + str(tweet_id)
+    where_statement = where_statement + " and n_wordnameid = " + str(wordname_id)
+
+    cur.execute("SELECT n_count FROM t_tweetwordname WHERE " + where_statement)
+
+    result = cur.fetchone()
+
+    cur.execute("UPDATE t_tweetwordname set n_count = " + str(int(result[0]) + 1) + " where " + where_statement)
+    conn.commit()
 
 """
 def getHashTagId(cur, hashtag_word):
