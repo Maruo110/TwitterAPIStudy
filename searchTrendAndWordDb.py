@@ -115,6 +115,7 @@ def run_searchTrendInfo():
                     tweet_text = removeNoise(tweet['full_text'])
 
                     # GCP実行
+                    logger.debug('｜｜｜[GCP]tweet_text: %s, ', tweet_text)
                     tweet_sentiment = natural_language.getSentiment(tweet_text)
                     tweet_sentiment_score     = '{:.02f}'.format(tweet_sentiment.score)
                     tweet_sentiment_magnitude = '{:.05f}'.format(tweet_sentiment.magnitude)
@@ -205,8 +206,17 @@ def run_searchTrendInfo():
 
                         if url_id < 0:
                             # スクレイピング
-                            web_res = requests.get(url).text
-                            web_soup = BeautifulSoup(web_res, 'html.parser')
+                            #web_res = requests.get(url).text
+
+                            #web_soup = BeautifulSoup(requests.get(url).apparent_encoding,  'html.parser')
+
+                            #web_soup = BeautifulSoup(web_res, 'html.parser')
+
+                            html = requests.get(url)
+                            html.encoding = html.apparent_encoding
+                            web_soup = BeautifulSoup(html.text, "html.parser")
+
+
                             ptag = web_soup.find_all("p")
                             url_title = web_soup.find_all("title")
                             ptag_value = ""
@@ -222,6 +232,7 @@ def run_searchTrendInfo():
                             url_title_value = removeNoise(url_title_value)
 
                             # GCP実行
+                            logger.debug('｜｜｜[GCP]ptag_value: %s, ', ptag_value)
                             ulr_sentiment = natural_language.getSentiment(ptag_value)
                             ulr_sentiment_score     = '{:.02f}'.format(ulr_sentiment.score)
                             ulr_sentiment_magnitude = '{:.05f}'.format(ulr_sentiment.magnitude)
@@ -246,7 +257,6 @@ def run_searchTrendInfo():
 
                             for sentence in url_sentences:
                                 sentence = sentence.strip()
-
 
                                 if len(sentence) > 1:
                                     if tweetdbDao.getExistRecordBySentence(db_cursol, sentence) == False:

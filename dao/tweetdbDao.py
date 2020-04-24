@@ -287,10 +287,11 @@ def updateSentence(conn, cur, sentence_id):
     result = cur.fetchone()
 
     set_statement = ""
+
     if int(result[0]) > 50:
-        set_statement = "n_count = " + str(int(result[0]) + 1)
-    else:
         set_statement = "n_count = " + str(int(result[0]) + 1) + ", n_ignoreflg = 1"
+    else:
+        set_statement = "n_count = " + str(int(result[0]) + 1)
 
     cur.execute("UPDATE t_sentence set " + set_statement + " where " + where_statement)
     conn.commit()
