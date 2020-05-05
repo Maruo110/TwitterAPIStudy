@@ -57,39 +57,30 @@ def run_searchTrendInfo():
 
         for trendinfo in search_trend[0]['trends']:
             trend_word = trendinfo['name']
-
-            hashtag_flg = 0
-            trend_word_id = -1
-            trend_sentiment_score = 0.0
-            trend_linked_tweet_cnt = 0
-
-            if trend_word[0] == '#':
-                hashtag_flg = 1
-                trend_word_id = tweetdbDao.getHashTagId(db_cursol, trend_word)
-
-                if trend_word_id < 0:
-                    tweetdbDao.insertHashTagTbl(db_connection, db_cursol, trend_word)
-                    trend_word_id = tweetdbDao.getHashTagId(db_cursol, trend_word)
-            else:
-                pass
+            trend_volume = trendinfo['tweet_volume']
 
             logger.debug('｜▽trend_word: %s', trend_word)
-
-            trend_volume = trendinfo['tweet_volume']
 
             if trend_volume is None:
                 tweet_volume = "-1"
             else:
                 tweet_volume = str(trend_volume)
 
-            insert_values = "'" + trend_word + "','" + str(date_today) + "','" + str(date_time) + "'"
-            insert_values = insert_values + "," + tweet_volume
-            insert_values = insert_values + "," + str(hashtag_flg)
-            insert_values = insert_values + "," + str(trend_word_id)
+            hashtag_flg = 0
+            trend_word_id = -1
+            trend_sentiment_score = 0.0
+            trend_linked_tweet_cnt = 0
 
-            #print("insert_values＝" + insert_values)
-            tweetdbDao.insertTrendTbl(db_connection, db_cursol, insert_values)
-            trendid = tweetdbDao.getMaxIdTrendTbl(db_cursol)
+            tweetdbDao.insertTrendTbl(db_connection,
+                                      db_cursol,
+                                      date_today,
+                                      date_time,
+                                      tweet_volume,
+                                      -1,
+                                      trend_word)
+
+            trend_id = tweetdbDao.getMaxIdByTrendTbl(db_cursol)
+
             count_trend += 1
 
             params2 = {
@@ -117,105 +108,52 @@ def run_searchTrendInfo():
                     # GCP実行
                     logger.debug('｜｜｜[GCP]tweet_text: %s, ', tweet_text)
                     tweet_sentiment = natural_language.getSentiment(tweet_text)
-                    tweet_sentiment_score     = '{:.02f}'.format(tweet_sentiment.score)
-                    tweet_sentiment_magnitude = '{:.05f}'.format(tweet_sentiment.magnitude)
+
+                    if tweet_sentiment is None:
+                        tweet_sentiment_score     = 0.0
+                        tweet_sentiment_magnitude = 0.0
+                    else:
+                        tweet_sentiment_score     = '{:.02f}'.format(tweet_sentiment.score)
+                        tweet_sentiment_magnitude = '{:.05f}'.format(tweet_sentiment.magnitude)
+
                     tweet_valid_str_count = len(tweet_text)
 
                     trend_sentiment_score = trend_sentiment_score + float(tweet_sentiment_score)
 
                     logger.debug('｜｜｜tweet_sentiment_score :%s', tweet_sentiment_score)
 
+                    tweet_userid ="@" + tweet['user']['screen_name']
 
-                    tweet_insert_value = "'@" + tweet['user']['screen_name'] + "'"
-                    tweet_insert_value = tweet_insert_value + ", '" + tweet_text + "'"
-                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet['retweet_count'])
-                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet['favorite_count'])
-                    tweet_insert_value = tweet_insert_value + ", '" + tweet_url + "'"
-                    tweet_insert_value = tweet_insert_value + ", '" + str(tweet_datetime) + "'"
-                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_sentiment_score)
-                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_sentiment_magnitude)
-                    tweet_insert_value = tweet_insert_value + ", "  + str(tweet_valid_str_count)
+                    tweetdbDao.insertTweetTbl(db_connection,
+                                              db_cursol,
+                                              tweet_userid,
+                                              tweet['retweet_count'],
+                                              tweet['favorite_count'],
+                                              tweet_url,
+                                              tweet_datetime,
+                                              tweet_sentiment_score,
+                                              tweet_sentiment_magnitude,
+                                              tweet_valid_str_count,
+                                              trend_id,
+                                              -1,
+                                              tweet_text)
 
-                    #print ("tweet_insert_value＝" + tweet_insert_value)
-
-                    tweetdbDao.insertTweetTbl(db_connection, db_cursol, tweet_insert_value)
-                    tweet_id = tweetdbDao.getMaxIdTweetTbl(db_cursol)
-
-                    logger.debug('｜｜｜tweet_id: %s, tweet_url: %s', str(tweet_id), tweet_url)
-
-                    if tweetdbDao.getExistRecordByTrendTweet(db_cursol, trendid, tweet_id) == False:
-                        tweetdbDao.insertTrendTweet(db_connection, db_cursol, trendid, tweet_id)
-                    else:
-                        pass
-
-                    # ------------------------------------------------------------------------
-                    # GCP Entity解析処理
-                    # ------------------------------------------------------------------------
-                    tweet_entities = analyze_entities.getAnalizeEntityResult(tweet_text)
-                    for entity in tweet_entities.entities:
-                        entity_name = entity.name
-                        entity_type = format(enums.Entity.Type(entity.type).name)
-                        entity_salience = float(entity.salience)
-                        entity_url = ""
-
-                        # 「NUMBER」タイプは登録処理をスキップする
-                        if entity_type ==  "NUMBER":
-                            pass
-                        else:
-                            # ■固有名詞テーブル登録処理
-                            if tweetdbDao.getExistRecordByWordName(db_cursol, entity_name) == False:
-                                tweetdbDao.insertWordNameTbl(db_connection, db_cursol, entity_name, entity_type, entity_url, entity_salience)
-                            else:
-                                pass
-
-                            entity_wordnameid = tweetdbDao.getWordNameId(db_cursol, entity_name)
-
-                            # ■ツイート関連固有名詞テーブル登録処理
-                            if tweetdbDao.getExistRecordByTweetWordName(db_cursol, tweet_id, entity_wordnameid) == False:
-                                tweetdbDao.insertTweetWordNameTbl(db_connection, db_cursol, tweet_id, entity_wordnameid)
-                            else:
-                                tweetdbDao.updateTweetWordNameTbl(db_connection, db_cursol, tweet_id, entity_wordnameid)
-
-                    # ハッシュタグ
-                    hashtaglist = tweet['entities']['hashtags']
-
-                    for hashtag in hashtaglist:
-                        tweet_hashtag = hashtag['text']
-
-                        tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
-
-                        if tweet_hashtagid < 0:
-                            tweetdbDao.insertHashTagTbl(db_connection, db_cursol, tweet_hashtag)
-                            tweet_hashtagid = tweetdbDao.getHashTagId(db_cursol, tweet_hashtag)
-                            count_hashtag += 1
-                        else:
-                            pass
-
-                        if tweetdbDao.getExistRecordByTweetHashtag(db_cursol, tweet_id, tweet_hashtagid) == False:
-                            tweetdbDao.insertTweetHashtagTbl(db_connection, db_cursol, tweet_id, tweet_hashtagid)
-                        else:
-                            pass
+                    tweet_id = tweetdbDao.getMaxIdByTweetTbl(db_cursol)
 
                     # リンクURL
                     link_url_list = tweet['entities']['urls']
 
                     for link_url in link_url_list:
+
                         url = link_url['expanded_url']
 
-                        url_id = tweetdbDao.getUrlId(db_cursol, url)
+                        url_id = tweetdbDao.getUrlIdByUrlTbl(db_cursol, url)
 
                         if url_id < 0:
-                            # スクレイピング
-                            #web_res = requests.get(url).text
-
-                            #web_soup = BeautifulSoup(requests.get(url).apparent_encoding,  'html.parser')
-
-                            #web_soup = BeautifulSoup(web_res, 'html.parser')
 
                             html = requests.get(url)
                             html.encoding = html.apparent_encoding
                             web_soup = BeautifulSoup(html.text, "html.parser")
-
 
                             ptag = web_soup.find_all("p")
                             url_title = web_soup.find_all("title")
@@ -238,78 +176,23 @@ def run_searchTrendInfo():
                             ulr_sentiment_magnitude = '{:.05f}'.format(ulr_sentiment.magnitude)
                             ulr_valid_str_count = len(ptag_value)
 
-                            url_insert_value = "'" + url + "'"
-                            url_insert_value = url_insert_value + ", " + str(ulr_sentiment_score)
-                            url_insert_value = url_insert_value + ", " + str(ulr_sentiment_magnitude)
-                            url_insert_value = url_insert_value + ", " + str(ulr_valid_str_count)
-                            url_insert_value = url_insert_value + ", '" + url_title_value + "'"
-                            url_insert_value = url_insert_value + ", '" + ptag_value + "'"
+                            tweetdbDao.insertUrlTbl(db_connection,
+                                                    db_cursol,
+                                                    url,
+                                                    ulr_sentiment_score,
+                                                    ulr_sentiment_magnitude,
+                                                    ulr_valid_str_count,
+                                                    url_title_value,
+                                                    ptag_value)
 
-                            tweetdbDao.insertUrlTbl(db_connection, db_cursol, url_insert_value)
-                            url_id = tweetdbDao.getMaxUrlId(db_cursol)
+                            url_id = tweetdbDao.getMaxIdByUrlTbl(db_cursol)
                             count_linkedurl += 1
 
-                            # ------------------------------------------------------------------------
-                            # 文章テーブル登録処理
-                            # ------------------------------------------------------------------------
-                            url_sentences = removeNoise(ptag_value)
-                            url_sentences = url_sentences.split("◆")
-
-                            for sentence in url_sentences:
-                                sentence = sentence.strip()
-
-                                if len(sentence) > 1:
-                                    if tweetdbDao.getExistRecordBySentence(db_cursol, sentence) == False:
-                                        tweetdbDao.insertSentenceTbl(db_connection, db_cursol, sentence)
-                                        sentence_id = tweetdbDao.getSentenceId(db_cursol, sentence)
-
-                                    else:
-                                        sentence_id = tweetdbDao.getSentenceId(db_cursol, sentence)
-                                        tweetdbDao.updateSentence(db_connection, db_cursol, sentence_id)
-
-                                    if tweetdbDao.getExistRecordBySentenceUrl(db_cursol, url_id, sentence_id) ==  False:
-                                        tweetdbDao.insertSentenceUrlTbl(db_connection, db_cursol, url_id, sentence_id)
-                                    else:
-                                        pass
-
-                                else:
-                                    pass
-                            # ------------------------------------------------------------------------
-                            # GCP Entity解析処理
-                            # ------------------------------------------------------------------------
-                            web_entities = analyze_entities.getAnalizeEntityResult(ptag_value)
-                            for entity in web_entities.entities:
-                                entity_name = removeNoise(entity_name)
-                                entity_type = format(enums.Entity.Type(entity.type).name)
-                                entity_salience = float(entity.salience)
-                                entity_url = ""
-
-                                # 「NUMBER」タイプは登録処理をスキップする
-                                if entity_type ==  "NUMBER":
-                                    pass
-                                else:
-                                    # ■固有名詞テーブル登録処理
-                                    if tweetdbDao.getExistRecordByWordName(db_cursol, entity_name) == False:
-                                        logger.debug('｜｜｜getExistRecordByWordName(entity_name): %s', entity_name)
-                                        tweetdbDao.insertWordNameTbl(db_connection, db_cursol, entity_name, entity_type, entity_url, entity_salience)
-                                    else:
-                                        pass
-
-                                    entity_wordnameid = tweetdbDao.getWordNameId(db_cursol, entity_name)
-
-                                    # ■Web関連固有名詞テーブル登録処理
-                                    if tweetdbDao.getExistRecordByUrlWordName(db_cursol, url_id, entity_wordnameid) == False:
-                                        tweetdbDao.insertUrlWordNameTbl(db_connection, db_cursol, url_id, entity_wordnameid)
-                                    else:
-                                        tweetdbDao.updateUrlWordNameTbl(db_connection, db_cursol, url_id, entity_wordnameid)
-
                         else:
-                            pass
-
-                        if tweetdbDao.getExistRecordByTweetUrl(db_cursol, tweet_id, url_id) == False:
-                            tweetdbDao.insertTweetUrl(db_connection, db_cursol, tweet_id, url_id)
-                        else:
-                            pass
+                            tweetdbDao.updateTweetTblUrlId(db_connection,
+                               db_cursol,
+                               tweet_id,
+                               url_id)
 
                     logger.debug('｜｜△')
 
@@ -319,8 +202,10 @@ def run_searchTrendInfo():
                 else:
                     ave_tweet_sentiment_score = trend_sentiment_score/trend_linked_tweet_cnt
 
-                tweetdbDao.updateTrendTblGcpResult(db_connection, db_cursol, trendid, ave_tweet_sentiment_score)
-
+                tweetdbDao.updateTrendTblGcpResult(db_connection,
+                                                   db_cursol,
+                                                   trend_id,
+                                                   ave_tweet_sentiment_score)
                 logger.debug('｜△')
 
             else:

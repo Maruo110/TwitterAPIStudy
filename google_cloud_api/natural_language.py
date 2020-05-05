@@ -10,7 +10,10 @@ def getSentiment(analyze_text):
 
     document = types.Document(content=analyze_text, type=enums.Document.Type.PLAIN_TEXT)
 
-    sentiment = client.analyze_sentiment(document=document).document_sentiment
+    try:
+        sentiment = client.analyze_sentiment(document=document).document_sentiment
+    except:
+        sentiment = None
 
     #print('Text: {}'.format(text))
     #print('Sentiment: {}, {}'.format(sentiment.score, sentiment.magnitude))
